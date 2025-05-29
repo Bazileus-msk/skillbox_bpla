@@ -17,7 +17,7 @@ class MathModel:
         self.position = 0.0
 
     def main_formule(self, tetta_ddot_cmd):
-        # Физически корректная формула момента силы
+        # Основная формула мат. модели
         M_y = self.I_y * tetta_ddot_cmd
         self.acceleration = M_y / self.I_y
 
@@ -38,7 +38,7 @@ class MathModel:
     def getPosition(self):
         return self.position
 
-
+#Класс PID регуляторов
 class Pid:
     def __init__(self, k_p, k_i, k_d,
                  tetta_dot_cmd_lower, tetta_dot_cmd_upper,
@@ -66,14 +66,14 @@ class Pid:
         self.differentiation_error_tetta_dot = 0.0
         self.previous_error_tetta_dot = 0.0
 
-        # Пределы скорости (конвертируем градусы/с → радианы/с)
+        # Пределы скорости (перевод градусы/с → радианы/с)
         self.tetta_dot_cmd_lower = math.radians(tetta_dot_cmd_lower)
         self.tetta_dot_cmd_upper = math.radians(tetta_dot_cmd_upper)
 
-        # Пределы ускорения (уже в радианах/с²)
+        # Пределы ускорения (в радианах/с²)
         self.tetta_ddot_cmd_lower = tetta_ddot_cmd_lower
         self.tetta_ddot_cmd_upper = tetta_ddot_cmd_upper
-
+        #Последнее полученное значение команды по угл. скорости
         self.last_tetta_dot_cmd = 0.0
 
     def Pid_1(self, angle, dt=0.01):
@@ -86,7 +86,7 @@ class Pid:
                          self.k_i * self.integration_error_angle +
                          self.k_d * self.differentiation_error_angle)
 
-        # Применяем несимметричное ограничение скорости
+        # Вызов звена насыщения для команды угл. скорости
         self.last_tetta_dot_cmd = self.saturation(
             tetta_dot_cmd,
             self.tetta_dot_cmd_lower,
@@ -105,7 +105,7 @@ class Pid:
                           self.k_i * self.integration_error_tetta_dot +
                           self.k_d * self.differentiation_error_tetta_dot)
 
-        # Применяем несимметричное ограничение ускорения
+        # Вызов звена насыщения для команды угл. ускорения
         return self.saturation(
             tetta_ddot_cmd,
             self.tetta_ddot_cmd_lower,
@@ -113,7 +113,6 @@ class Pid:
         )
 
     def saturation(self, inputVal, lower, upper):
-        """Универсальное несимметричное ограничение"""
         if inputVal < lower:
             return lower
         elif inputVal > upper:
@@ -146,7 +145,7 @@ class Simulator:
             self.accList.append(acc)
             self.timeList.append(time)
 
-            # Последовательный вызов ПИД-регуляторов
+            # вызов ПИД-регуляторов по очереди
             tetta_dot_cmd = self.Pid.Pid_1(pose, self.dt)
             tetta_ddot_cmd = self.Pid.Pid_2(vel, self.dt)
 
@@ -155,14 +154,14 @@ class Simulator:
 
             self.mathModel.calculatePosition(tetta_ddot_cmd, self.dt)
             time += self.dt
-
+    # Вывод графиков по всем величинам и по командам
     def showPlots(self):
         fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(10, 12))
 
-        # Константы преобразования
+        # переменная для преобразования радиан в градусы
         rad_to_deg = 180 / math.pi
 
-        # Преобразование в градусы для положения и скорости
+        # Преобразование в градусы для угл. положения и скорости
         deg_pos = [p * rad_to_deg for p in self.posList]
         deg_vel = [v * rad_to_deg for v in self.velList]
         deg_cmd_vel = [cv * rad_to_deg for cv in self.cmdVelList]
@@ -275,14 +274,14 @@ VEL_UPPER = 300  # верхний предел 300 °/с
 ACC_LOWER = 5.0  # нижний предел 5 рад/с²
 ACC_UPPER = 15.0  # верхний предел 15 рад/с²
 
-# Физические параметры
+# Параметры из условия
 Iy = 7.16914e-10
 k_b = 3.9865e-08
 l = 0.17
 T_cmd = 10
 
-# Создание объектов
-target_angle_deg = 30.0
+# Объявление объектов для моделирования
+target_angle_deg = 30.0  # Целевое положение в градусах 
 target_angle_rad = math.radians(target_angle_deg)
 controller = Pid(
     k_p, k_i, k_d,
